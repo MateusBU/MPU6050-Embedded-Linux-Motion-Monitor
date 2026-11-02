@@ -6,7 +6,7 @@ import time
 from smbus2 import SMBus
 from influxdb_client import InfluxDBClient, Point
 from influxdb_client.client.write_api import SYNCHRONOUS
-
+from datetime import datetime
 
 # MPU6050 configuration
 I2C_BUS = 1
@@ -22,7 +22,7 @@ INFLUXDB_ORG = "packt"
 INFLUXDB_BUCKET = "ch12"
 
 # Sampling interval in seconds
-SAMPLE_INTERVAL = 0.1
+SAMPLE_INTERVAL = 1
 
 
 def convert_to_signed(value):
@@ -123,9 +123,11 @@ def main():
                 record=point
             )
 
+            hora_atual = datetime.now().strftime("%H:%M:%S")
+
             print(
-                f"Roll: {roll:.2f}° | "
-                f"Pitch: {pitch:.2f}°"
+                f"[{hora_atual}] Sent to InfluxDB -> Roll: {roll:.2f}° | Pitch: {pitch:.2f}°",
+                flush=True,
             )
 
             time.sleep(SAMPLE_INTERVAL)
