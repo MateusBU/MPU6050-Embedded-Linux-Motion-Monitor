@@ -4,15 +4,18 @@ import os
 from flask import Flask, jsonify
 from influxdb_client import InfluxDBClient
 from flask import Flask, jsonify, render_template_string
+from dotenv import load_dotenv
 
 # Flask configuration
 app = Flask(__name__)
 
 # InfluxDB configuration
-INFLUXDB_URL = "http://localhost:8086"
+load_dotenv("config.env")
+
+INFLUXDB_URL = os.getenv("INFLUXDB_URL")
 INFLUXDB_TOKEN = os.getenv("INFLUXDB_TOKEN")
-INFLUXDB_ORG = "packt"
-INFLUXDB_BUCKET = "ch12"
+INFLUXDB_ORG = os.getenv("INFLUXDB_ORG")
+INFLUXDB_BUCKET = os.getenv("INFLUXDB_BUCKET")
 
 MEASUREMENT = "mpu6050_orientation"
 
@@ -149,7 +152,7 @@ def live_dashboard():
             }
 
             updateReadings();
-            setInterval(updateReadings, 500);
+            setInterval(updateReadings, 300);
         </script>
     </body>
     </html>

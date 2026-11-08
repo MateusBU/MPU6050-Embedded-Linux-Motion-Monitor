@@ -6,151 +6,383 @@ import QtQuick.Controls 2.15
 Window {
     id: window
 
-    width: 640
-    height: 480
+    width: 900
+    height: 600
+    minimumWidth: 700
+    minimumHeight: 500
     visible: true
-    title: qsTr("MPU6050 Motion Monitor")
+    title: "MPU6050 Motion Monitor"
 
     property double roll: 0.0
     property double pitch: 0.0
-    property bool isStarted: false
 
-    // Simulates sensor readings for now
+    property bool isStarted: false
+    property bool apiConnected: false
+    property bool darkTheme: true
+
+    // Theme colors
+    property color backgroundColor: darkTheme ? "#111827" : "#F3F6FA"
+    property color panelColor: darkTheme ? "#1F2937" : "#FFFFFF"
+    property color primaryText: darkTheme ? "#F9FAFB" : "#172033"
+    property color secondaryText: darkTheme ? "#9CA3AF" : "#64748B"
+    property color borderColor: darkTheme ? "#374151" : "#E2E8F0"
+    property color accentColor: "#38BDF8"
+    property color positiveColor: "#22C55E"
+    property color negativeColor: "#EF4444"
+
+
+    // Request sensor readings from Flask
     function updateReadings() {
-        roll = (Math.random() * 90 - 45).toFixed(2)
-        pitch = (Math.random() * 90 - 45).toFixed(2)
+        var request = new XMLHttpRequest()
+
+        request.open("GET", "http://127.0.0.1:5000/")
+
+        request.onreadystatechange = function() {
+            if (request.readyState === XMLHttpRequest.DONE) {
+
+                if (request.status === 200) {
+                    try {
+                        var response = JSON.parse(request.responseText)
+
+                        roll = Number(response.roll)
+                        pitch = Number(response.pitch)
+
+                        apiConnected = true
+                    } catch (error) {
+                        apiConnected = false
+                        console.log("Invalid API response:", error)
+                    }
+                } else {
+                    apiConnected = false
+                    console.log("API error:", request.status)
+                }
+            }
+        }
+
+        request.send()
     }
 
     Timer {
         id: periodicTimer
-        interval: 500
+        interval: 300
         repeat: true
 
-        onTriggered: {
-            updateReadings()
-        }
+        onTriggered: window.updateReadings()
     }
 
-    Label {
-        id: titleLabel
+    Rectangle {
+        anchors.fill: parent
+        color: window.backgroundColor
 
-        anchors.horizontalCenter: parent.horizontalCenter
-        anchors.top: parent.top
-        anchors.topMargin: 50
+        Column {
+            anchors.fill: parent
+            anchors.margins: 32
+            spacing: 28
 
-        font.pixelSize: 28
-        font.bold: true
-        text: "MPU6050 Motion Monitor"
-    }
+            // HEADER
+            Row {
+                width: parent.width
+                height: 65
+                spacing: 12
 
-    Row {
-        id: readingsRow
+                Column {
+                    anchors.verticalCenter: parent.verticalCenter
+                    spacing: 5
 
-        anchors.centerIn: parent
-        spacing: 30
+                    Label {
+                        text: "MPU6050"
+                        font.pixelSize: 27
+                        font.bold: true
+                        color: window.primaryText
+                    }
 
-        // ROLL
-        Rectangle {
-            width: 220
-            height: 130
+                    Label {
+                        text: "MOTION MONITOR"
+                        font.pixelSize: 11
+                        font.bold: true
+                        font.letterSpacing: 2
+                        color: window.secondaryText
+                    }
+                }
 
-            color: "transparent"
-            border.color: "black"
-            border.width: 2
-            radius: 8
+                Item {
+                    width: parent.width - 340
+                    height: 1
+                }
 
+                // API STATUS
+                Rectangle {
+                    width: 145
+                    height: 38
+                    radius: 19
+                    color: window.panelColor
+                    border.color: window.borderColor
+                    anchors.verticalCenter: parent.verticalCenter
+
+                    Row {
+                        anchors.centerIn: parent
+                        spacing: 8
+
+                        Rectangle {
+                            width: 9
+                            height: 9
+                            radius: 5
+                            color: window.apiConnected
+                                   ? window.positiveColor
+                                   : window.negativeColor
+                            anchors.verticalCenter: parent.verticalCenter
+                        }
+
+                        Label {
+                            text: window.apiConnected
+                                  ? "API Connected"
+                                  : "API Offline"
+                            color: window.primaryText
+                            font.pixelSize: 12
+                            anchors.verticalCenter: parent.verticalCenter
+                        }
+                    }
+                }
+
+                // THEME BUTTON
+                Rectangle {
+                    width: 44
+                    height: 44
+                    radius: 12
+                    color: window.panelColor
+                    border.color: window.borderColor
+                    anchors.verticalCenter: parent.verticalCenter
+
+                    Label {
+                        anchors.centerIn: parent
+                        text: window.darkTheme ? "☀" : "☾"
+                        font.pixelSize: 22
+                        color: window.primaryText
+                    }
+
+                    MouseArea {
+                        anchors.fill: parent
+                        cursorShape: Qt.PointingHandCursor
+
+                        onClicked: {
+                            window.darkTheme = !window.darkTheme
+                        }
+                    }
+                }
+            }
+
+            // DESCRIPTION
             Column {
-                anchors.centerIn: parent
-                spacing: 10
+                spacing: 6
 
                 Label {
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    text: "ROLL"
-                    font.pixelSize: 22
+                    text: "Sensor Overview"
+                    font.pixelSize: 21
+                    font.bold: true
+                    color: window.primaryText
                 }
 
                 Label {
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    text: roll + "°"
-                    font.pixelSize: 36
-                    font.bold: true
+                    text: "Real-time orientation measurements"
+                    font.pixelSize: 13
+                    color: window.secondaryText
                 }
             }
-        }
 
-        // PITCH
-        Rectangle {
-            width: 220
-            height: 130
+            // SENSOR CARDS
+            Row {
+                width: parent.width
+                height: 205
+                spacing: 20
 
-            color: "transparent"
-            border.color: "black"
-            border.width: 2
-            radius: 8
+                // ROLL CARD
+                Rectangle {
+                    width: (parent.width - 20) / 2
+                    height: 205
+                    radius: 16
+                    color: window.panelColor
+                    border.color: window.borderColor
 
+                    Column {
+                        anchors.fill: parent
+                        anchors.margins: 24
+                        spacing: 12
+
+                        Label {
+                            text: "ROLL"
+                            font.pixelSize: 13
+                            font.bold: true
+                            font.letterSpacing: 2
+                            color: window.secondaryText
+                        }
+
+                        Label {
+                            text: window.roll.toFixed(2) + "°"
+                            font.pixelSize: 48
+                            font.bold: true
+                            color: window.accentColor
+                        }
+
+                        Label {
+                            text: "Rotation around X-axis"
+                            font.pixelSize: 12
+                            color: window.secondaryText
+                        }
+                    }
+                }
+
+                // PITCH CARD
+                Rectangle {
+                    width: (parent.width - 20) / 2
+                    height: 205
+                    radius: 16
+                    color: window.panelColor
+                    border.color: window.borderColor
+
+                    Column {
+                        anchors.fill: parent
+                        anchors.margins: 24
+                        spacing: 12
+
+                        Label {
+                            text: "PITCH"
+                            font.pixelSize: 13
+                            font.bold: true
+                            font.letterSpacing: 2
+                            color: window.secondaryText
+                        }
+
+                        Label {
+                            text: window.pitch.toFixed(2) + "°"
+                            font.pixelSize: 48
+                            font.bold: true
+                            color: "#A78BFA"
+                        }
+
+                        Label {
+                            text: "Rotation around Y-axis"
+                            font.pixelSize: 12
+                            color: window.secondaryText
+                        }
+                    }
+                }
+            }
+
+            // CONTROLS
             Column {
-                anchors.centerIn: parent
-                spacing: 10
+                width: parent.width
+                spacing: 15
 
                 Label {
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    text: "PITCH"
-                    font.pixelSize: 22
-                }
-
-                Label {
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    text: pitch + "°"
-                    font.pixelSize: 36
+                    text: "CONTROLS"
+                    font.pixelSize: 12
                     font.bold: true
+                    font.letterSpacing: 2
+                    color: window.secondaryText
+                }
+
+                Row {
+                    spacing: 12
+
+                    // START / STOP
+                    Rectangle {
+                        width: 125
+                        height: 46
+                        radius: 10
+                        color: window.isStarted
+                               ? window.negativeColor
+                               : window.positiveColor
+
+                        Label {
+                            anchors.centerIn: parent
+                            text: window.isStarted ? "Stop" : "Start"
+                            font.pixelSize: 14
+                            font.bold: true
+                            color: "#FFFFFF"
+                        }
+
+                        MouseArea {
+                            anchors.fill: parent
+                            cursorShape: Qt.PointingHandCursor
+
+                            onClicked: {
+                                if (!window.isStarted) {
+                                    window.isStarted = true
+                                    window.updateReadings()
+                                    periodicTimer.start()
+                                } else {
+                                    window.isStarted = false
+                                    periodicTimer.stop()
+                                }
+                            }
+                        }
+                    }
+
+                    // NOW
+                    Rectangle {
+                        width: 100
+                        height: 46
+                        radius: 10
+                        color: window.panelColor
+                        border.color: window.borderColor
+                        visible: !window.isStarted
+
+                        Label {
+                            anchors.centerIn: parent
+                            text: "Refresh"
+                            font.pixelSize: 14
+                            color: window.primaryText
+                        }
+
+                        MouseArea {
+                            anchors.fill: parent
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: window.updateReadings()
+                        }
+                    }
+
+                    // RESET
+                    Rectangle {
+                        width: 100
+                        height: 46
+                        radius: 10
+                        color: window.panelColor
+                        border.color: window.borderColor
+                        visible: !window.isStarted
+
+                        Label {
+                            anchors.centerIn: parent
+                            text: "Reset"
+                            font.pixelSize: 14
+                            color: window.primaryText
+                        }
+
+                        MouseArea {
+                            anchors.fill: parent
+                            cursorShape: Qt.PointingHandCursor
+
+                            onClicked: {
+                                window.roll = 0
+                                window.pitch = 0
+                            }
+                        }
+                    }
                 }
             }
-        }
-    }
 
-    Row {
-        anchors.horizontalCenter: parent.horizontalCenter
-        anchors.top: readingsRow.bottom
-        anchors.topMargin: 40
-        spacing: 30
+            Item {
+                width: 1
+                height: 1
+            }
 
-        Button {
-            text: isStarted ? "Stop" : "Start"
-            font.pixelSize: 20
-
-            onClicked: {
-                if (!isStarted) {
-                    isStarted = true
-                    periodicTimer.start()
-                    updateReadings()
-                } else {
-                    isStarted = false
-                    periodicTimer.stop()
-
-                    roll = 0
-                    pitch = 0
-                }
+            // FOOTER
+            Label {
+                width: parent.width
+                text: "Embedded Linux  |  Raspberry Pi 4  |  MPU6050"
+                font.pixelSize: 11
+                color: window.secondaryText
+                horizontalAlignment: Text.AlignHCenter
             }
         }
-
-        Button {
-            text: "Now"
-            font.pixelSize: 20
-            visible: !isStarted
-
-            onClicked: {
-                updateReadings()
-            }
-        }
-    }
-
-    Label {
-        anchors.horizontalCenter: parent.horizontalCenter
-        anchors.bottom: parent.bottom
-        anchors.bottomMargin: 20
-
-        text: "Demo mode - simulated sensor values"
-        font.pixelSize: 13
-        color: "gray"
     }
 }

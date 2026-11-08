@@ -7,6 +7,7 @@ from smbus2 import SMBus
 from influxdb_client import InfluxDBClient, Point
 from influxdb_client.client.write_api import SYNCHRONOUS
 from datetime import datetime
+from dotenv import load_dotenv
 
 # MPU6050 configuration
 I2C_BUS = 1
@@ -16,13 +17,15 @@ PWR_MGMT_1 = 0x6B
 ACCEL_XOUT_H = 0x3B
 
 # InfluxDB configuration
-INFLUXDB_URL = "http://localhost:8086"
+load_dotenv("config.env")
+
+INFLUXDB_URL = os.getenv("INFLUXDB_URL")
 INFLUXDB_TOKEN = os.getenv("INFLUXDB_TOKEN")
-INFLUXDB_ORG = "packt"
-INFLUXDB_BUCKET = "ch12"
+INFLUXDB_ORG = os.getenv("INFLUXDB_ORG")
+INFLUXDB_BUCKET = os.getenv("INFLUXDB_BUCKET")
 
 # Sampling interval in seconds
-SAMPLE_INTERVAL = 1
+SAMPLE_INTERVAL = 0.3
 
 
 def convert_to_signed(value):
