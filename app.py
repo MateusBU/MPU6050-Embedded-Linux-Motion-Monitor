@@ -1,78 +1,33 @@
-
-import os
-
-from flask import Flask, jsonify
-from influxdb_client import InfluxDBClient
 from flask import Flask, jsonify, render_template_string
-from dotenv import load_dotenv
 
-# Flask configuration
-app = Flask(__name__)
-
-# InfluxDB configuration
-load_dotenv("config.env")
-
-INFLUXDB_URL = os.getenv("INFLUXDB_URL")
-INFLUXDB_TOKEN = os.getenv("INFLUXDB_TOKEN")
-INFLUXDB_ORG = os.getenv("INFLUXDB_ORG")
-INFLUXDB_BUCKET = os.getenv("INFLUXDB_BUCKET")
-
-MEASUREMENT = "mpu6050_orientation"
-
-# Initialize InfluxDB client
-if not INFLUXDB_TOKEN:
-    raise RuntimeError("INFLUXDB_TOKEN environment variable is not set.")
-
-client = InfluxDBClient(
-    url=INFLUXDB_URL,
-    token=INFLUXDB_TOKEN,
-    org=INFLUXDB_ORG
+from database.influxdb_client import (
+    create_client,
+    get_latest_reading
 )
 
+app = Flask(__name__)
+
+client = create_client()
 query_api = client.query_api()
-
-
 
 @app.route("/")
 def get_last_reading():
     """Retrieve the latest Roll and Pitch measurements."""
 
-    query = f'''
-        from(bucket: "{INFLUXDB_BUCKET}")
-        |> range(start: -10m)
-        |> filter(fn: (r) => r["_measurement"] == "{MEASUREMENT}")
-        |> filter(fn: (r) => r["_field"] == "roll" or r["_field"] == "pitch")
-        |> group(columns: ["_field"])
-        |> last()
-    '''
+    readings = get_latest_reading(query_api)
 
-    result = query_api.query(query)
-
-    readings = {
-        "roll": None,
-        "pitch": None
-    }
-
-    for table in result:
-        for record in table.records:
-            field = record.get_field()
-            value = record.get_value()
-
-            readings[field] = value
+    if readings["roll"] is None or readings["pitch"] is None:
+        return jsonify({
+            "error": "No recent sensor readings found."
+        }), 404
 
     print(
         f"Roll: {readings['roll']:.2f}° | "
         f"Pitch: {readings['pitch']:.2f}°",
         flush=True
     )
-    
-    if readings["roll"] is None or readings["pitch"] is None:
-        return jsonify({
-            "error": "No recent sensor readings found."
-        }), 404
 
     return jsonify(readings)
-
 
 @app.route("/live")
 def live_dashboard():
