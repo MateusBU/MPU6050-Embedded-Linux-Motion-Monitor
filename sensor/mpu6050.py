@@ -8,10 +8,19 @@ MPU6050_ADDRESS = 0x68
 PWR_MGMT_1 = 0x6B
 ACCEL_XOUT_H = 0X3B
 
+GYRO_XOUT_H = 0x43
+GYRO_SCALE = 131.0
+
 class MPU6050:
     def __init__(self, bus_number=I2C_BUS):
         self.bus = SMBus(bus_number)
 
+        self.gyro_bias = {
+            "x": -4.7684,
+            "y": 0.8473,
+            "z": -0.6468
+        }
+        
         # Wake up the MPU6050
         self.bus.write_byte_data(
             MPU6050_ADDRESS,
@@ -83,6 +92,35 @@ class MPU6050:
             accel_y,
             accel_z
         )
-    
+
+
+    def read_gyroscope(self):
+        """Read gyroscope values and compensate for sensor bias."""
+
+        data = self.bus.read_i2c_block_data(
+            MPU6050_ADDRESS,
+            GYRO_XOUT_H,
+            6
+        )
+
+        gyro_x = self.convert_to_signed(
+            (data[0] << 8) | data[1]
+        ) / GYRO_SCALE
+
+        gyro_y = self.convert_to_signed(
+            (data[2] << 8) | data[3]
+        ) / GYRO_SCALE
+
+        gyro_z = self.convert_to_signed(
+            (data[4] << 8) | data[5]
+        ) / GYRO_SCALE
+
+        # Compensate gyroscope bias
+        gyro_x -= self.gyro_bias["x"]
+        gyro_y -= self.gyro_bias["y"]
+        gyro_z -= self.gyro_bias["z"]
+
+        return gyro_x, gyro_y, gyro_z
+
     def close(self):
         self.bus.close()

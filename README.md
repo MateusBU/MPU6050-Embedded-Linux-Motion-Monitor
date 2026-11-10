@@ -284,7 +284,6 @@ The native Qt dashboard can also run directly on a display connected to the Rasp
 
 ## Future Improvements
 
-- Refactor sensor and database operations into independent Python modules.
 - Implement gyroscope data acquisition.
 - Combine accelerometer and gyroscope measurements using a complementary filter.
 - Add additional sensor measurements, such as temperature and humidity.
